@@ -1,0 +1,9 @@
+{
+    "name": "nerdquiz-server",
+    "version": "1.0.0",
+    "description": "The Socket.io server for the nerdquiz app.",
+    "dependencies": {
+        "express": "4",
+        "socket.io": "^4.5.2"
+    }
+}
