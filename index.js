@@ -22,7 +22,7 @@ io.on('connection', (socket) => {
 		socket.code = code
 		socket.isHost = true
 		if (!boards[code]) {
-			boards[code] = { board: null, status: false, players: [] }
+			boards[code] = { board: null, status: false, activeQuestion: null, players: [] }
 		}
 	})
 	socket.on('join-room', (code, name) => {
@@ -35,7 +35,9 @@ io.on('connection', (socket) => {
 			let player = playerIsInRoom(code, name)
 			if (player) {
 				socket.emit('name-taken')
-			}else {
+			} else if (boards[code].status) {
+				socket.emit('already-running')
+			} else {
 				socket.join(code)
 				socket.code = code
 				socket.isHost = false
@@ -49,12 +51,17 @@ io.on('connection', (socket) => {
 			socket.emit('room-not-found')
 		}
 	})
-	socket.on('update-board', (board, boardStatus) => {
+	socket.on('update-board', (board, boardStatus, activeQuestion) => {
 		socket.board = board
 		boards[socket.code].board = board
 		boards[socket.code].status = boardStatus
-		console.log(boards[socket.code])
+		boards[socket.code].activeQuestion = activeQuestion
 		io.to(socket.code).emit('update-board', boards[socket.code])
+	})
+	socket.on('buzz', () => {
+		if (!boards[socket.code].activeQuestion.question.buzzed) {
+			io.to(socket.code).emit('player-buzzed', socket.name)
+		}
 	})
 	socket.on('disconnect', () => {
 		if (boards[socket.code]) {
@@ -62,12 +69,10 @@ io.on('connection', (socket) => {
 				delete boards[socket.code]
 				io.to(socket.code).emit('host-left', socket.name)
 			}else {
-				console.log(boards[socket.code].players)
 				let player = playerIsInRoom(socket.code, socket.name)
 				if (player) {
 					removePlayerFromRoom(socket.code, socket.name)
 				}
-				console.log(boards[socket.code].players)
 				io.to(socket.code).emit('player-left', boards[socket.code].players)
 				io.to(socket.code).emit('update-board', boards[socket.code])
 			}
