@@ -8,6 +8,7 @@ const io = new Server(server, {
 		origin: process.env.ORIGIN_URL || 'http://localhost:3000',
 	}
 })
+let port = process.env.PORT || 3001
 
 let boards = []
 
@@ -51,16 +52,22 @@ io.on('connection', (socket) => {
 			socket.emit('room-not-found')
 		}
 	})
-	socket.on('update-board', (board, boardStatus, activeQuestion) => {
+	socket.on('update-board', (board, boardStatus, activeQuestion, players) => {
 		socket.board = board
 		boards[socket.code].board = board
 		boards[socket.code].status = boardStatus
 		boards[socket.code].activeQuestion = activeQuestion
+		boards[socket.code].players = players
 		io.to(socket.code).emit('update-board', boards[socket.code])
 	})
 	socket.on('buzz', () => {
 		if (!boards[socket.code].activeQuestion.question.buzzed) {
 			io.to(socket.code).emit('player-buzzed', socket.name)
+		}
+	})
+	socket.on('answer', (answer) => {
+		if (boards[socket.code].activeQuestion.question.buzzed && boards[socket.code].activeQuestion.question.buzzed.player === socket.name) {
+			io.to(socket.code).emit('answered', answer)
 		}
 	})
 	socket.on('disconnect', () => {
@@ -80,8 +87,8 @@ io.on('connection', (socket) => {
 	})
 })
 
-server.listen(3001, () => {
-	console.log('listening on *:3001')
+server.listen(port, () => {
+	console.log('listening on *:' + port)
 })
 
 function playerIsInRoom(code, name) {
